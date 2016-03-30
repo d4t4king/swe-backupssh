@@ -11,8 +11,8 @@ if [ -e /var/smoothwall/mods/backupssh/DETAILS ]; then
 fi
 
 # Install Current Version
-tar -jxvf ./backupssh-install.bz2 -C / >/dev/null
-mv -f ./backupssh-install.bz2 /var/smoothwall/mods/backupssh/archives
+tar xvf ./backupssh-install.tar.xz / >/dev/null
+mv -f ./backupssh-install.tar.xz /var/smoothwall/mods/backupssh/archives
 
 # Check for SmoothInstall
 if [ -e "/var/smoothwall/mods/SmoothInstall" ]; then
