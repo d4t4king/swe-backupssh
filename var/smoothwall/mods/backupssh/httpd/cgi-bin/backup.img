@@ -1,0 +1,194 @@
+#!/usr/bin/perl
+#
+# SmoothWall CGIs
+#
+# This code is distributed under the terms of the GPL
+#
+# (c) The SmoothWall Team
+
+use lib "/usr/lib/smoothwall";
+use header qw( :standard );
+use smoothd qw( message );
+use SmoothInstall qw( :standard );
+
+Init("backupssh");
+
+my @temp;
+my %cgiparams;
+my $count; my $command;
+my @selectedui; my @selectedsetup; my @selectedmodules;
+my $version = $ModDetails{'MOD_LONG_NAME'} . " v. " . $ModDetails{'MOD_VERSION'};
+my $script = "$MODDIR/etc/script.sh";
+&readhash("${swroot}/main/settings", \%settings);
+chomp($date = `date +%d-%b-%Y`);
+my $redIP = &readvalue("${swroot}/red/local-ipaddress");
+my $arcname = "config.backup#$settings{'HOSTNAME'}#$redIP#$date.tgz";
+
+$cgiparams{'ACTION'} = '';
+$cgiparams{'VALID'} = '';
+$cgiparams{'HOST'} = '';
+$cgiparams{'USER'} = '';
+$cgiparams{'PORT'} = '22';
+$cgiparams{'KEY'} = 'id_rsa';
+
+&getcgihash(\%cgiparams);
+
+my $errormessage = '';
+my $extramessage = '';
+
+if ($cgiparams{'ACTION'} eq $tr{'create backup floppy disk'} || 
+	$cgiparams{'ACTION'} eq $tr{'create backup floppy image file'})
+{ 
+	unless ($errormessage)
+	{
+		system('/etc/rc.d/backupscript');
+
+		if ($cgiparams{'ACTION'} eq $tr{'create backup floppy disk'})
+		{
+			if (system('/usr/bin/tar', '-C', "${swroot}/backup", '-cWf', '/dev/fd0', '.')) {
+				$errormessage = $tr{'unable to create backup floppy'}; }
+			else {
+				$extramessage = $tr{'backup disk created successfully'}; }
+		}
+		else
+		{
+			if (system('/usr/bin/tar', '-C', "${swroot}/backup", '-cf', "${swroot}/tmp/backup.img", '.')) {
+				$errormessage = $tr{'unable to create floppy image file'}; }
+			else
+			{
+				print "Content-type: application/octect-stream\n";
+				print "Content-length: " . 1440 * 1024 . "\n\n";
+
+				undef $/;
+				open (FILE, "${swroot}/tmp/backup.img");
+				$_= <FILE>;
+				print $_;
+				$l = length;
+				
+				close (FILE);
+
+				print '\0' x ((1440 * 1024) - $l);
+
+				unlink "${swroot}/tmp/backup.img";
+
+				exit;
+			}
+		}		
+	}
+}
+
+if ($cgiparams{'ACTION'} eq 'Go!') 
+{
+unless ($errormessage)
+	{
+		&writehash("$MODDIR/etc/settings", \%cgiparams);
+		unless(system("/usr/bin/tar -C ${swroot} -czf ${swroot}/tmp/$arcname adsl advnet auth ddns dhcp dmzholes ethernet ipblock isdn main/hostname.conf main/settings main/proxy modem portfw ppp proxy remote snort time vpn xtaccess clamav hosts im outgoing p3scan sipproxy timedaccess traffic")==0)  {
+				$errormessage = "Unable to create backup archive!$!"; }
+		open(SCRIPT, ">$script") or warn "unable to write to script :$!";
+		print SCRIPT "#!/bin/bash\n";
+		print SCRIPT "/usr/bin/scp -P $cgiparams{'PORT'} -i /root/.ssh/$cgiparams{'KEY'} ${swroot}/tmp/$arcname root\@$cgiparams{'HOST'}:.\n";
+		close SCRIPT;
+		$mode = 0755;   chmod $mode, $script;
+		my $success = message('backupsshtransfer');
+
+		if (not defined $success) {
+		$errormessage = $tr{'smoothd failure'};
+		}
+		unlink $script;
+	}
+}
+
+my %checked;
+
+&showhttpheaders();
+
+&readhash("$MODDIR/etc/settings", \%cgiparams);
+
+&openpage($tr{'backup configuration'}, 1, '', 'maintenance');
+
+&openbigbox('100%', 'LEFT');
+print <<END
+<script language="javascript" type="text/javascript">
+
+	function toggle(Id)
+	{
+		var el = document.getElementById(Id);
+		if ( el.style.display != 'none' )
+		{
+		el.style.display = 'none';
+		}
+		else 
+		{
+		el.style.display = '';
+		}
+	}
+</script>
+END
+;
+
+&alertbox($errormessage);
+
+print "<FORM METHOD='POST' NAME='myform'>\n";
+
+&openbox($tr{'backup floppy instructions'});
+print <<END
+$tr{'backup floppy instructions long'}
+END
+;
+
+print "<FONT SIZE='5' CLASS='base'><DIV ALIGN='center'>$extramessage</DIV></FONT>\n";
+
+&closebox();
+
+print <<END
+<DIV ALIGN='CENTER'>
+<TABLE WIDTH='80%'>
+<TR>
+	<TD ALIGN='CENTER'><INPUT TYPE='submit' NAME='ACTION' VALUE='$tr{'create backup floppy disk'}'></TD>
+	<TD ALIGN='CENTER'><INPUT TYPE='submit' NAME='ACTION' VALUE='$tr{'create backup floppy image file'}'></TD>
+	<TD ALIGN='CENTER'><INPUT TYPE='button' NAME='ACTION' VALUE='$tr{'backupssh-create and transfer'}' TITLE='$tr{'backupssh-warning'}'  onClick="javascript:toggle('details'); return false;"></TD>
+</TR>
+</TABLE>
+</DIV>
+END
+;
+print <<END
+<DIV ALIGN='CENTER' Id='details' style='display: none'>
+END
+;
+&openbox( 'Remote host details:' );
+print qq|
+<br/>
+<table class='blank'>
+	<tr>
+	<td>Host:&nbsp<INPUT TYPE='text' NAME='HOST' VALUE='$cgiparams{'HOST'}' TITLE='$tr{'backupssh-popup1'}' style='background-color: lightgrey;' readonly></td>
+	<td>User:&nbsp<INPUT TYPE='text' NAME='USER' VALUE='$cgiparams{'USER'}' TITLE='$tr{'backupssh-popup2'}' style='background-color: lightgrey;' readonly></td>
+	<td>Port:&nbsp<INPUT TYPE='text' NAME='PORT' VALUE='$cgiparams{'PORT'}' size='5'></td>
+	<td>Keyfile:&nbsp<INPUT TYPE='text' NAME='KEY' VALUE='$cgiparams{'KEY'}'  TITLE='$tr{'backupssh-popup3'}' size='15' style='background-color: lightgrey;' readonly></td>
+	<TD><INPUT TYPE='submit' NAME='ACTION' VALUE='Go!'></TD>
+	</tr>
+</table>
+<br/>
+	$tr{'backupssh-hint1'}
+	<br/><br/><div align='center' TITLE="$tr{'backupssh-hint2'}" style='border-width: 1px; border-style: solid; border-color: orange; padding: 5px 5px 5px 5px;'><code>scp -P $cgiparams{'PORT'} $cgiparams{'USER'}\@$cgiparams{'HOST'}:$arcname .; tar -xzvf $arcname -C /var/smoothwall; reboot</code></div><br/>
+<TABLE WIDTH='100%'>
+<TR>
+	<TD ALIGN='left'>	$tr{'backupssh-hint3'}</TD>
+	<TD ALIGN='right'><small><a href='http://community.smoothwall.org/forum/viewforum.php?f=54' title='$tr{'backupssh-link-tip'}'  target='_blank'>$version &nbsp</a></small></TD>
+</TR>
+</TABLE>
+|;
+
+&closebox();
+print <<END
+</DIV>
+END
+;
+
+print "</FORM>\n";
+
+&alertbox('add', 'add');
+
+&closebigbox();
+
+&closepage($errormessage);

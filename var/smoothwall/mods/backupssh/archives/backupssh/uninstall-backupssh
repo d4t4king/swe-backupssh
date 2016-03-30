@@ -1,0 +1,20 @@
+#!/usr/bin/perl -w
+
+# Set up environment
+use lib "/usr/lib/smoothwall";
+use SmoothInstall qw( :standard );
+use header  qw( :standard );
+use Shell qw(rm);
+use File::Path;
+
+Init("backupssh");
+
+# Start Uninstallation
+ClearScreen;
+
+PRINT $GREEN . "Uninstalling $CYAN $ModDetails{'MOD_NAME'} $GREEN Version: $PURPLE $ModDetails{'MOD_VERSION'} $NORMAL";
+PRINT $GREEN . "Restoring cgi script... $NORMAL";
+system("/bin/cp $MODDIR/backup/backup.img /httpd/cgi-bin");
+system("chmod 755 /httpd/cgi-bin/backup.img");
+rmtree("$MODDIR");
+PRINT $GREEN . "Finished Uninstallation. $NORMAL";

@@ -1,0 +1,28 @@
+#!/bin/sh
+# COLORS
+INFO="\033[1;32m"	# Green
+INPUT="\033[1;37m"	# White
+
+if [ -e /var/smoothwall/mods/backupssh/DETAILS ]; then
+	echo -e "$INFO"
+	echo "Uninstalling previous version..."
+	echo -e "$INPUT"
+	/var/smoothwall/mods/backupssh/uninstall-backupssh
+fi
+
+# Install Current Version
+tar -jxvf ./backupssh-install.bz2 -C / >/dev/null
+mv -f ./backupssh-install.bz2 /var/smoothwall/mods/backupssh/archives
+
+# Check for SmoothInstall
+if [ -e "/var/smoothwall/mods/SmoothInstall" ]; then
+	. /var/smoothwall/mods/SmoothInstall/archives/CheckSI
+else
+	. /var/smoothwall/mods/backupssh/archives/CheckSI
+fi
+if [ $? -ne "0" ]; then
+	echo "SmoothInstall Installation Failed"
+	exit
+fi
+
+/var/smoothwall/mods/backupssh/install-backupssh.pl
