@@ -6,15 +6,19 @@ use SmoothInstall qw( :standard );
 use header  qw( :standard );
 use Shell qw(rm);
 use File::Path;
+use Term::ANSIColor;
 
 Init("backupssh");
 
 # Start Uninstallation
 ClearScreen;
 
-PRINT $GREEN . "Uninstalling $CYAN $ModDetails{'MOD_NAME'} $GREEN Version: $PURPLE $ModDetails{'MOD_VERSION'} $NORMAL";
-PRINT $GREEN . "Restoring cgi script... $NORMAL";
+print colored("Uninstalling ", "green");
+print colored("$ModDetails{'MOD_NAME'} ", "cyan");
+print colored("Version: ", "green");
+print colored("$ModDetails{'MOD_VERSION'} \n", "magenta");
+print colored("Restoring cgi script... \n", "green");
 system("/bin/cp $MODDIR/backup/backup.img /httpd/cgi-bin");
 system("chmod 755 /httpd/cgi-bin/backup.img");
 rmtree("$MODDIR");
-PRINT $GREEN . "Finished Uninstallation. $NORMAL";
+print colored("Finished Uninstallation. \n", "green");
