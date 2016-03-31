@@ -18,3 +18,5 @@ nytprof.out
 *.o
 *.bs
 /_eumm/
+backupssh-3.x_0.1.tar.xz
+tmp/backupssh-install.tar.xz
