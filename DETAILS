@@ -1,0 +1,9 @@
+MOD_NAME=backupssh
+MOD_DIR=/var/smoothwall/mods/${MOD_NAME}
+MOD_VERSION=0.0.1
+MOD_LONG_NAME="[3.1] SSH Backup v${VERSION}"
+MOD_AUTHOR="NetWhiz(?)"
+MOD_MAINTAINER=dataking
+MOD_INFO="Backup your smoothie over SSH to an internal storage server"
+MOD_FORUM=
+
